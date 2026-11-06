@@ -6,7 +6,7 @@ import {ArrowIcon} from '@/components/arrow-icon';
 import {CopyLink,ExportActions} from '@/components/export-actions';
 import {
   type Company, type Fact, companyHref, date, evidence, financialFact, found, jobs,
-  locations, money, number, percent, safeUrl, text, title,
+  locations, money, number, percent, safeUrl, factDate, socialUrl, text, title,
 } from '@/lib/lens-data';
 import { useLensData } from '@/components/lens-provider';
 import { DataState, Missing, StatusBadge } from '@/components/lens-ui';
@@ -34,7 +34,11 @@ const rows: Row[] = [
 ];
 
 function ComparisonValue({ company, facts, row, scale }: { company: Company; facts: Fact[]; row: Row; scale?: {min:number;max:number} }) {
-  if (!found(company, row.category)) return <StatusBadge company={company} category={row.category} />;
+  const {language} = useLensData();
+  if (!found(company, row.category)) {
+    const checked = company.checked_at && typeof company.checked_at === 'object' ? text((company.checked_at as Record<string,unknown>)[row.category]) : '';
+    return <div className={styles.valueBlock}><StatusBadge company={company} category={row.category}/>{checked && <small className="muted">{language==='no'?'Sjekket':'Checked'} {date(checked)}</small>}</div>;
+  }
   const metricFact = row.metric ? financialFact(company, facts, row.metric, company.latest_year) : undefined;
   const raw = row.metric ? metricFact?.amount ?? (row.field==='operating_result' ? undefined : company[row.field]) : company[row.field] ?? evidence(company,facts,row.field)[0]?.value;
   let value: ReactNode = <Missing />;
@@ -65,7 +69,7 @@ function ComparisonValue({ company, facts, row, scale }: { company: Company; fac
   } else if (row.field === 'social' || row.field === 'news') {
     sources = facts.filter(f=>f.org_number===company.org_number && f.category===row.category && text(f.value));
     hasValue = sources.length>0;
-    if(hasValue) value = <span className={styles.links}>{sources.map((f,i)=>safeUrl(f.source_url)?<a key={i} href={safeUrl(f.source_url)} target="_blank" rel="noopener noreferrer">{text(f.value)}</a>:<span key={i}>{text(f.value)}</span>)}</span>;
+    if(hasValue) value = <span className={styles.links}>{sources.map((f,i)=>{const url=row.field==='social'?socialUrl(f):safeUrl(f.source_url);const name=row.field==='social'?text(f.field)||text(f.value):text(f.value);return <span key={i}>{url?<a href={url} target="_blank" rel="noopener noreferrer">{name}</a>:name}<small className={styles.factDate} style={{display:'block'}}>{factDate(f,language==='no')}</small></span>;})}</span>;
   } else if (row.field === 'industry_text') {
     const description = text(company.industry_text_en) || text(raw);
     const code = text(company.industry_code);
@@ -88,9 +92,9 @@ function ComparisonValue({ company, facts, row, scale }: { company: Company; fac
   const amount = number(raw);
   const numeric = row.category==='financials' && amount!==null;
   return <div className={styles.valueBlock}><div className={styles.valueLine}>
-    <span className={numeric?styles.numeric:styles.value} title={numeric ? (row.metric?money(raw,company.latest_year,company.currency):percent(raw)) : row.field==='industry_text' ? text(company.industry_text_en)||text(raw) : text(raw)}>{value}</span>
+    <span className={row.field==='industry_text'||row.field==='social'?styles.wrappedValue:numeric?styles.numeric:styles.value} title={numeric ? (row.metric?money(raw,metricFact?.year,company.currency):percent(raw)) : row.field==='industry_text' ? text(company.industry_text_en)||text(raw) : text(raw)}>{value}</span>
     <DocumentSource company={company} facts={sources}/>
-  </div>{numeric && scale && <FinancialBar value={amount!} scale={scale}/>}</div>;
+  </div>{hasValue && row.field!=='social' && row.field!=='news' && sources[0] && <small className={styles.factDate}>{factDate(sources[0],language==='no')}</small>}{numeric && scale && <FinancialBar value={amount!} scale={scale}/>}</div>;
 }
 
 function compactMoney(n:number,currency:unknown){const abs=Math.abs(n);const unit=abs>=1e9?1e9:abs>=1e6?1e6:abs>=1e3?1e3:1;return `${text(currency)||'NOK'} ${new Intl.NumberFormat('en-US',{maximumFractionDigits:2}).format(n/unit)}${unit===1e9?' bn':unit===1e6?' m':unit===1e3?' K':''}`;}
@@ -133,7 +137,7 @@ export default function CompanyComparison() {
     {!loading&&!error&&chosen.length>0&&<div className={styles.hero}>{chosen.map((company,index)=><div className={styles.contender} key={company.org_number}>{index>0&&<span className={styles.vs}>VS</span>}<article className={styles.heroCard} data-depth-card="true" data-industry={industryGroup(company)} style={{'--avatar-colour':colour(index)} as CSSProperties}>
       <div className={styles.band}><span className={styles.avatar}>{text(company.legal_name).slice(0,1)}</span><button className={styles.remove} aria-label={`${t('Remove')} ${title(company.legal_name)}`} onClick={()=>toggle(company.org_number)}>×</button></div>
       <div className={styles.heroBody}><Link className={styles.heroName} href={companyHref(company)}>{title(company.legal_name)||company.org_number}</Link><p className={styles.meta}>{company.org_number} · {text(company.legal_form)||'—'} · {title(company.municipality)||'—'}</p><p className={styles.industry}>{text(company.industry_text_en)||text(company.industry_text)||'—'}</p>
-      <div className={styles.stats}>{headlines.map(row=>{const n=rowNumber(company,facts,row);const values=chosen.map(c=>rowNumber(c,facts,row));const winner=n!==null&&(!row.metric||new Set(chosen.map(c=>text(c.currency)||'NOK')).size===1)&&chosen.length>1&&values.every(v=>v!==null)&&values.every((v,i)=>i===index||n>v!);return <div className={styles.stat} key={row.field}><span>{t(row.label)}</span><strong>{n===null?'—':row.metric?compactMoney(n,company.currency):new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:2}).format(n)}</strong><small>{text(company.latest_year)||'—'} {winner&&<span className={styles.winner}>↑ {language==='no'?'høyere':'higher'}</span>}</small></div>;})}</div></div>
+      <div className={styles.stats}>{headlines.map(row=>{const n=rowNumber(company,facts,row);const values=chosen.map(c=>rowNumber(c,facts,row));const winner=n!==null&&(!row.metric||new Set(chosen.map(c=>text(c.currency)||'NOK')).size===1)&&chosen.length>1&&values.every(v=>v!==null)&&values.every((v,i)=>i===index||n>v!);return <div className={styles.stat} key={row.field}><span>{t(row.label)}</span><strong>{n===null?'—':row.metric?compactMoney(n,company.currency):new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:2}).format(n)}</strong><small>{evidence(company,facts,row.field)[0]?factDate(evidence(company,facts,row.field)[0],language==='no'):''} {winner&&<span className={styles.winner}>↑ {language==='no'?'høyere':'higher'}</span>}</small></div>;})}</div></div>
     </article></div>)}</div>}
     <div className={styles.toolbar} role="group" aria-label={language==='no'?'Sammenligningsverktøy':'Comparison tools'}>
       <button className="button secondary" disabled={loading||chosen.length>=3} onClick={openSearch}>+ {language==='no'?'Legg til selskap':'Add company'}</button>

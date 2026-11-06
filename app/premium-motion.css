@@ -1,4 +1,5 @@
-/* Motion only: no geometry or palette overrides. */
+/* Preserve motion; the requested headline contrast applies in both themes. */
+html body .ledger-hero h1,html body .ledger-hero h1 span,html.dark body .ledger-hero h1 span{color:#F5F1E6!important;-webkit-text-fill-color:#F5F1E6!important;background-image:none!important;text-shadow:none}
 @media (prefers-reduced-motion:no-preference) and (hover:hover) and (pointer:fine){
 [data-motion-card]{position:relative;transform-style:preserve-3d;transition:transform 300ms ease-out!important;isolation:isolate}
 [data-motion-card][data-motion-active]{transition:none!important;will-change:transform}

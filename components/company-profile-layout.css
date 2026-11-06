@@ -20,6 +20,7 @@
 .company-profile-surface :is(#key-facts,#people) .data-row dt{max-width:none;overflow-wrap:anywhere}
 .company-profile-surface :is(#key-facts,#people) .data-row dd{margin:0;text-align:right;overflow-wrap:anywhere;display:flex;align-items:center;justify-content:flex-end;gap:4px;min-width:0}
 .company-profile-surface .profile-fact-row-value{min-width:0;overflow-wrap:anywhere}
+.company-profile-surface .profile-fact-date{display:block;font-size:12px;font-weight:400;line-height:1.5}
 .company-profile-surface :is(#key-facts,#people) .data-row .profile-source-marker{flex:0 0 44px}
 .company-profile-surface .profile-chart-negative{background:#b46d69;border-radius:0 0 3px 3px}
 .company-profile-surface .profile-annual-table{width:100%;min-width:0}
@@ -181,7 +182,7 @@ main>.container:has(.company-profile-surface){max-width:1200px;width:calc(100% -
 .company-profile-surface .profile-summary-grid .profile-sourced-value{display:flex;align-items:flex-start;gap:0;min-width:0;max-width:100%}
 .company-profile-surface .profile-summary-grid .profile-source-marker{flex:0 0 44px}
 .company-profile-surface .profile-summary-grid dd small{font:400 13px/1.5 var(--font-ui),Arial,sans-serif;letter-spacing:0;color:var(--muted-foreground);margin-top:6px}
-.company-profile-surface .profile-summary-grid .profile-industry-value{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;min-width:0;font-size:18px;line-height:1.3;overflow-wrap:normal}
+.company-profile-surface .profile-summary-grid .profile-industry-value{display:block;-webkit-line-clamp:unset;overflow:visible;text-overflow:clip;white-space:normal;min-width:0;font-size:18px;line-height:1.3;overflow-wrap:anywhere}
 .company-profile-surface .profile-overview-industry_text dd small{font-size:12px}
 .company-profile-surface .profile-overview-number{white-space:nowrap;overflow-wrap:normal;word-break:normal;font-size:clamp(17px,1.7vw,20px);font-variant-numeric:tabular-nums}
 .company-profile-surface :is(#key-facts,#people) .data-row{min-height:52px;padding-block:4px;align-items:center}

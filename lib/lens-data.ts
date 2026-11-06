@@ -16,6 +16,16 @@ export function title(v: unknown) {
 }
 export function address(v: unknown) { return text(v).replace(/\b[\p{Lu}][\p{Lu}\s-]+$/u, x => title(x)); }
 export function safeUrl(v: unknown) { try { const u = new URL(text(v)); return ['https:','http:'].includes(u.protocol) ? u.href : ''; } catch { return ''; } }
+export function factDate(f: Fact | undefined, no = false) { if (!f) return ''; const period = text(f.reporting_period) || text(f.year); return period || (text(f.retrieved_at) ? `${no ? 'Sjekket' : 'Checked'} ${date(f.retrieved_at)}` : ''); }
+export function socialUrl(f: Fact) {
+  const url = safeUrl(f.value); if (!url) return '';
+  const u = new URL(url), host = u.hostname.toLowerCase().replace(/^www\./, '');
+  const platforms: Record<string,string[]> = {facebook:['facebook.com','fb.com'],linkedin:['linkedin.com'],instagram:['instagram.com'],twitter:['twitter.com','x.com'],youtube:['youtube.com','youtu.be'],tiktok:['tiktok.com']};
+  const field = text(f.field).toLowerCase();
+  const expected = Object.entries(platforms).find(([name]) => field.includes(name));
+  const allowed = expected ? expected[1] : Object.values(platforms).flat();
+  return u.pathname !== '/' && allowed.some(domain => host === domain || host.endsWith(`.${domain}`)) ? url : '';
+}
 export function status(c: Company, category: string) { const s = text(c.sections[category]); return s === 'available' ? 'Found' : s === 'not_found' ? 'Not found' : 'Could not check'; }
 export const found = (c: Company, category: string) => status(c, category) === 'Found';
 export function money(v: unknown, year?: unknown, currency: unknown = 'NOK') { const n=number(v); return n === null ? 'Not found' : `${text(currency) || 'NOK'} ${new Intl.NumberFormat('en-US',{maximumFractionDigits:0}).format(n)}${text(year) ? ` (${text(year)})` : ''}`; }
