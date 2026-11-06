@@ -23,7 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${fraunces.variable}`}>
-      <head><meta name="color-scheme" content="light dark"/><script dangerouslySetInnerHTML={{__html:`(function(){var t='light';try{var s=localStorage.getItem('ncl-theme');if(s==='light'||s==='dark')t=s;}catch(e){}var d=t==='dark';document.documentElement.classList.toggle('dark',d);document.documentElement.style.colorScheme=d?'dark':'light';})();`}}/></head>
+      <head><script dangerouslySetInnerHTML={{__html:`(function(){var t='light';try{var s=localStorage.getItem('ncl-theme');if(s==='light'||s==='dark')t=s;}catch(e){}var d=t==='dark';document.documentElement.classList.toggle('dark',d);document.documentElement.style.colorScheme=d?'dark':'light';})();`}}/><meta name="color-scheme" content="light dark"/></head>
       <body>
         <Suspense fallback={<><header className="site-header"><div className="container header-inner"><a href="/" className="brand">Nordic Company Lens</a><nav className="nav-links"><a href="/compare">Compare</a></nav></div></header><main aria-label="Loading" aria-busy="true"><div className="container skeleton-state"><label className="search-field home-search"><span className="sr-only">Search companies</span><input placeholder="Search by name, org. number, town or industry" aria-label="Search companies" readOnly/></label><div role="status"><span className="sr-only">Loading company records</span><div className="skeleton"/><div className="skeleton"/><div className="skeleton"/></div></div></main></>}><LensProvider initialCompanies={initialCompanies} metadata={bootstrap.metadata}><LensShell>{children}<SurfaceDepth/></LensShell></LensProvider></Suspense>
       </body>

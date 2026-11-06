@@ -36,8 +36,8 @@ const rows: Row[] = [
 function comparisonDate(f: Fact, row: Row, no: boolean) {
   if (row.category === 'financials') {
     const year = text(f.year);
-    const periodYears = [...new Set(text(f.reporting_period).match(/\b(?:19|20)\d{2}\b/g) || [])];
-    const fiscalYear = /^\d{4}$/.test(year) ? year : periodYears.length === 1 ? periodYears[0] : '';
+    const periodYears = text(f.reporting_period).match(/\b(?:19|20)\d{2}\b/g) || [];
+    const fiscalYear = periodYears.at(-1) || (/^\d{4}$/.test(year) ? year : '');
     return fiscalYear ? `FY ${fiscalYear}` : '';
   }
   if (row.field === 'employees') {
@@ -155,7 +155,7 @@ export default function CompanyComparison() {
     {!loading&&!error&&chosen.length>0&&<div className={styles.hero}>{chosen.map((company,index)=><div className={styles.contender} key={company.org_number}>{index>0&&<span className={styles.vs}>VS</span>}<article className={styles.heroCard} data-depth-card="true" data-industry={industryGroup(company)} style={{'--avatar-colour':colour(index)} as CSSProperties}>
       <div className={styles.band}><span className={styles.avatar}>{text(company.legal_name).slice(0,1)}</span><button className={styles.remove} aria-label={`${t('Remove')} ${title(company.legal_name)}`} onClick={()=>toggle(company.org_number)}>×</button></div>
       <div className={styles.heroBody}><Link className={styles.heroName} href={companyHref(company)}>{title(company.legal_name)||company.org_number}</Link><p className={styles.meta}>{company.org_number} · {text(company.legal_form)||'—'} · {title(company.municipality)||'—'}</p><p className={styles.industry}>{text(company.industry_text_en)||text(company.industry_text)||'—'}</p>
-      <div className={styles.stats}>{headlines.map(row=>{const n=rowNumber(company,facts,row);const values=chosen.map(c=>rowNumber(c,facts,row));const winner=n!==null&&(!row.metric||new Set(chosen.map(c=>text(c.currency)||'NOK')).size===1)&&chosen.length>1&&values.every(v=>v!==null)&&values.every((v,i)=>i===index||n>v!);return <div className={styles.stat} key={row.field}><span>{t(row.label)}</span><strong>{n===null?'—':row.metric?compactMoney(n,company.currency):new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:2}).format(n)}</strong><small>{evidence(company,facts,row.field)[0]?factDate(evidence(company,facts,row.field)[0],language==='no'):''} {winner&&<span className={styles.winner}>↑ {language==='no'?'høyere':'higher'}</span>}</small></div>;})}</div></div>
+      <div className={styles.stats}>{headlines.map(row=>{const n=rowNumber(company,facts,row);const values=chosen.map(c=>rowNumber(c,facts,row));const winner=n!==null&&(!row.metric||new Set(chosen.map(c=>text(c.currency)||'NOK')).size===1)&&chosen.length>1&&values.every(v=>v!==null)&&values.every((v,i)=>i===index||n>v!);return <div className={styles.stat} key={row.field}><span>{t(row.label)}</span><strong>{n===null?'—':row.metric?compactMoney(n,company.currency):new Intl.NumberFormat('en-US',{notation:'compact',maximumFractionDigits:2}).format(n)}</strong><small>{evidence(company,facts,row.field)[0]?comparisonDate(evidence(company,facts,row.field)[0],row,language==='no'):''} {winner&&<span className={styles.winner}>↑ {language==='no'?'høyere':'higher'}</span>}</small></div>;})}</div></div>
     </article></div>)}</div>}
     <div className={styles.toolbar} role="group" aria-label={language==='no'?'Sammenligningsverktøy':'Comparison tools'}>
       <button className="button secondary" disabled={loading||chosen.length>=3} onClick={openSearch}>+ {language==='no'?'Legg til selskap':'Add company'}</button>
