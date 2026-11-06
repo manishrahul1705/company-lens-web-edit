@@ -17,6 +17,13 @@ export function title(v: unknown) {
 export function address(v: unknown) { return text(v).replace(/\b[\p{Lu}][\p{Lu}\s-]+$/u, x => title(x)); }
 export function safeUrl(v: unknown) { try { const u = new URL(text(v)); return ['https:','http:'].includes(u.protocol) ? u.href : ''; } catch { return ''; } }
 export function factDate(f: Fact | undefined, no = false) { if (!f) return ''; const period = text(f.reporting_period) || text(f.year); return period || (text(f.retrieved_at) ? `${no ? 'Sjekket' : 'Checked'} ${date(f.retrieved_at)}` : ''); }
+// Missing-data checks must use the supplied category check, never a retrieval or financial date.
+export function missingCheck(c: Company, category: string, no = false): string {
+  const checks = c.checked_at;
+  const checked = checks && typeof checks === 'object' && !Array.isArray(checks) ? text((checks as Record<string, unknown>)[category]) : '';
+  if (!checked || !Number.isFinite(Date.parse(checked))) return no ? 'Sjekkdato utilgjengelig' : 'Check date unavailable';
+  return `${no ? 'Sjekket' : 'Checked'} ${date(checked)} – ${no ? 'ingenting funnet' : 'nothing found'}`;
+}
 export function socialUrl(f: Fact) {
   const url = safeUrl(f.value); if (!url) return '';
   const u = new URL(url), host = u.hostname.toLowerCase().replace(/^www\./, '');

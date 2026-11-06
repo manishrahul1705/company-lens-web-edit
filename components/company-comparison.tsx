@@ -6,7 +6,7 @@ import {ArrowIcon} from '@/components/arrow-icon';
 import {CopyLink,ExportActions} from '@/components/export-actions';
 import {
   type Company, type Fact, companyHref, date, evidence, financialFact, found, jobs,
-  locations, money, number, percent, safeUrl, factDate, socialUrl, text, title,
+  locations, money, number, percent, safeUrl, factDate, missingCheck, socialUrl, text, title,
 } from '@/lib/lens-data';
 import { useLensData } from '@/components/lens-provider';
 import { DataState, Missing, StatusBadge } from '@/components/lens-ui';
@@ -33,11 +33,28 @@ const rows: Row[] = [
   { field: 'news', label: 'News', category: 'news' },
 ];
 
+function comparisonDate(f: Fact, row: Row, no: boolean) {
+  if (row.category === 'financials') {
+    const year = text(f.year);
+    const periodYears = [...new Set(text(f.reporting_period).match(/\b(?:19|20)\d{2}\b/g) || [])];
+    const fiscalYear = /^\d{4}$/.test(year) ? year : periodYears.length === 1 ? periodYears[0] : '';
+    return fiscalYear ? `FY ${fiscalYear}` : '';
+  }
+  if (row.field === 'employees') {
+    const checked = text(f.retrieved_at);
+    return checked && Number.isFinite(Date.parse(checked)) ? `${no ? 'Sjekket' : 'Checked'} ${date(checked)}` : (no ? 'Sjekkdato utilgjengelig' : 'Check date unavailable');
+  }
+  return factDate(f, no);
+}
+
 function ComparisonValue({ company, facts, row, scale }: { company: Company; facts: Fact[]; row: Row; scale?: {min:number;max:number} }) {
   const {language} = useLensData();
   if (!found(company, row.category)) {
-    const checked = company.checked_at && typeof company.checked_at === 'object' ? text((company.checked_at as Record<string,unknown>)[row.category]) : '';
-    return <div className={styles.valueBlock}><StatusBadge company={company} category={row.category}/>{checked && <small className="muted">{language==='no'?'Sjekket':'Checked'} {date(checked)}</small>}</div>;
+    const absent = text(company.sections[row.category]) === 'not_found';
+    const checks = company.checked_at;
+    const checked = checks && typeof checks === 'object' && !Array.isArray(checks) ? text((checks as Record<string,unknown>)[row.category]) : '';
+    const checkLabel = checked && Number.isFinite(Date.parse(checked)) ? `${language==='no'?'Sjekket':'Checked'} ${date(checked)}` : (language==='no'?'Sjekkdato utilgjengelig':'Check date unavailable');
+    return <div className={styles.valueBlock}>{!absent && <StatusBadge company={company} category={row.category}/>}<small className="muted">{absent ? missingCheck(company, row.category, language==='no') : checkLabel}</small></div>;
   }
   const metricFact = row.metric ? financialFact(company, facts, row.metric, company.latest_year) : undefined;
   const raw = row.metric ? metricFact?.amount ?? (row.field==='operating_result' ? undefined : company[row.field]) : company[row.field] ?? evidence(company,facts,row.field)[0]?.value;
@@ -89,12 +106,13 @@ function ComparisonValue({ company, facts, row, scale }: { company: Company; fac
     }
   }
 
+  if (!hasValue) value = <span className="missing">{missingCheck(company, row.category, language==='no')}</span>;
   const amount = number(raw);
   const numeric = row.category==='financials' && amount!==null;
   return <div className={styles.valueBlock}><div className={styles.valueLine}>
     <span className={row.field==='industry_text'||row.field==='social'?styles.wrappedValue:numeric?styles.numeric:styles.value} title={numeric ? (row.metric?money(raw,metricFact?.year,company.currency):percent(raw)) : row.field==='industry_text' ? text(company.industry_text_en)||text(raw) : text(raw)}>{value}</span>
     <DocumentSource company={company} facts={sources}/>
-  </div>{hasValue && row.field!=='social' && row.field!=='news' && sources[0] && <small className={styles.factDate}>{factDate(sources[0],language==='no')}</small>}{numeric && scale && <FinancialBar value={amount!} scale={scale}/>}</div>;
+  </div>{hasValue && row.field!=='social' && row.field!=='news' && sources[0] && <small className={styles.factDate}>{comparisonDate(sources[0],row,language==='no')}</small>}{numeric && scale && <FinancialBar value={amount!} scale={scale}/>}</div>;
 }
 
 function compactMoney(n:number,currency:unknown){const abs=Math.abs(n);const unit=abs>=1e9?1e9:abs>=1e6?1e6:abs>=1e3?1e3:1;return `${text(currency)||'NOK'} ${new Intl.NumberFormat('en-US',{maximumFractionDigits:2}).format(n/unit)}${unit===1e9?' bn':unit===1e6?' m':unit===1e3?' K':''}`;}
