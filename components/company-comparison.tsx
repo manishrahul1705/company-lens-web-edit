@@ -5,7 +5,7 @@ import {useEffect,useState, type CSSProperties, type ReactNode} from 'react';
 import {ArrowIcon} from '@/components/arrow-icon';
 import {CopyLink,ExportActions} from '@/components/export-actions';
 import {
-  type Company, type Fact, companyHref, date, evidence, financialFact, found, jobs,
+  displayValue, type Company, type Fact, companyHref, date, evidence, financialFact, found, jobs,
   locations, money, number, percent, safeUrl, factDate, missingCheck, socialUrl, text, title,
 } from '@/lib/lens-data';
 import { useLensData } from '@/components/lens-provider';
@@ -54,6 +54,7 @@ function ComparisonValue({ company, facts, row, scale }: { company: Company; fac
     const checks = company.checked_at;
     const checked = checks && typeof checks === 'object' && !Array.isArray(checks) ? text((checks as Record<string,unknown>)[row.category]) : '';
     const checkLabel = checked && Number.isFinite(Date.parse(checked)) ? `${language==='no'?'Sjekket':'Checked'} ${date(checked)}` : (language==='no'?'Sjekkdato utilgjengelig':'Check date unavailable');
+    if (row.category === 'jobs' && !absent) return <div className={styles.valueBlock}><small className="muted">Could not check ({text(company.sections.jobs).replaceAll('_',' ') || 'no evidence available'})</small></div>;
     return <div className={styles.valueBlock}>{!absent && <StatusBadge company={company} category={row.category}/>}<small className="muted">{absent ? missingCheck(company, row.category, language==='no') : checkLabel}</small></div>;
   }
   const metricFact = row.metric ? financialFact(company, facts, row.metric, company.latest_year) : undefined;
@@ -86,7 +87,7 @@ function ComparisonValue({ company, facts, row, scale }: { company: Company; fac
   } else if (row.field === 'social' || row.field === 'news') {
     sources = facts.filter(f=>f.org_number===company.org_number && f.category===row.category && text(f.value));
     hasValue = sources.length>0;
-    if(hasValue) value = <span className={styles.links}>{sources.map((f,i)=>{const url=row.field==='social'?socialUrl(f):safeUrl(f.source_url);const name=row.field==='social'?text(f.field)||text(f.value):text(f.value);return <span key={i}>{url?<a href={url} target="_blank" rel="noopener noreferrer">{name}</a>:name}<small className={styles.factDate} style={{display:'block'}}>{factDate(f,language==='no')}</small></span>;})}</span>;
+    if(hasValue) value = <span className={styles.links}>{sources.slice(0,3).map((f,i)=>{const url=row.field==='social'?socialUrl(f):safeUrl(f.source_url);const name=row.field==='social'?text(f.field)||text(f.value):displayValue(f.value).replace(/^Registry announcement:\s*/i,'').replace(/\s*\([^)]*registry publication date, not effective date[^)]*\)/gi,'').replace(/workplace(?: registry update recorded:)?\s+(\d{9})/i,'Workplace $1 updated');return <span key={i}>{row.field==='news'&&<small className={styles.factDate}>{factDate(f,language==='no')}</small>}{url?<a href={url} target="_blank" rel="noopener noreferrer">{name}</a>:name}{row.field!=='news'&&<small className={styles.factDate}>{factDate(f,language==='no')}</small>}</span>;})}{sources.length>3&&<small>+{sources.length-3} more</small>}</span>;
   } else if (row.field === 'industry_text') {
     const description = text(company.industry_text_en) || text(raw);
     const code = text(company.industry_code);
@@ -94,7 +95,7 @@ function ComparisonValue({ company, facts, row, scale }: { company: Company; fac
     if (hasValue) value = description || code;
   } else {
     hasValue = !!text(raw);
-    if (hasValue) value = row.field === 'founded' ? date(raw) : row.field === 'municipality' || row.field === 'ceo' ? title(raw) : text(raw);
+    if (hasValue) value = row.field === 'founded' ? date(raw) : row.field === 'municipality' || row.field === 'ceo' ? title(raw) : displayValue(raw);
   }
 
   if (hasValue && row.field !== 'locations_count' && row.field !== 'jobs_count') {
@@ -110,7 +111,7 @@ function ComparisonValue({ company, facts, row, scale }: { company: Company; fac
   const amount = number(raw);
   const numeric = row.category==='financials' && amount!==null;
   return <div className={styles.valueBlock}><div className={styles.valueLine}>
-    <span className={row.field==='industry_text'||row.field==='social'?styles.wrappedValue:numeric?styles.numeric:styles.value} title={numeric ? (row.metric?money(raw,metricFact?.year,company.currency):percent(raw)) : row.field==='industry_text' ? text(company.industry_text_en)||text(raw) : text(raw)}>{value}</span>
+    <span className={row.field==='industry_text'||row.field==='social'||row.field==='news'?styles.wrappedValue:numeric?styles.numeric:styles.value} title={numeric ? (row.metric?money(raw,metricFact?.year,company.currency):percent(raw)) : row.field==='industry_text' ? text(company.industry_text_en)||text(raw) : text(raw)}>{value}</span>
     <DocumentSource company={company} facts={sources}/>
   </div>{hasValue && row.field!=='social' && row.field!=='news' && sources[0] && <small className={styles.factDate}>{comparisonDate(sources[0],row,language==='no')}</small>}{numeric && scale && <FinancialBar value={amount!} scale={scale}/>}</div>;
 }

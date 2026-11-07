@@ -11,7 +11,7 @@ import { useLensData } from '@/components/lens-provider';
 import { DataState, Missing } from '@/components/lens-ui';
 import {CountUp,useProfileSections} from './profile-motion';
 import {industryGroup} from '@/lib/industry-style';
-import { parseFacts, categories, companyFacts, date, evidence, financialFact, found, jobs, locations, money, number, percent, safeUrl, factDate, missingCheck, socialUrl, text, title, type Company, type Fact } from '@/lib/lens-data';
+import { displayValue, parseFacts, categories, companyFacts, date, evidence, financialFact, found, jobs, locations, money, number, percent, safeUrl, factDate, missingCheck, socialUrl, text, title, type Company, type Fact } from '@/lib/lens-data';
 
 const sectionIcons: Record<string, string> = { identity: 'M4 3h16v18H4z M8 7h8 M8 11h8 M8 15h4', financials: 'M3 20h18 M6 16V10 M12 16V4 M18 16V7', people: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75', locations: 'M20 10c0 6-8 11-8 11S4 16 4 10a8 8 0 1 1 16 0z M15 10a3 3 0 1 1-6 0 3 3 0 0 1 6 0', website: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0 M3 12h18 M12 3c4 5 4 13 0 18 M12 3c-4 5-4 13 0 18', social: 'M8 12l8-5 M8 12l8 5 M8 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0 M22 5a3 3 0 1 1-6 0 3 3 0 0 1 6 0 M22 19a3 3 0 1 1-6 0 3 3 0 0 1 6 0', jobs: 'M3 7h18v14H3z M8 7V3h8v4 M3 12h18 M10 12v3h4v-3', news: 'M4 3h16v18H4z M8 7h8 M8 11h8 M8 15h3 M8 18h8' };
 function SectionIcon({category}:{category:string}) { return <svg className="section-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={sectionIcons[category] || sectionIcons.identity}/></svg>; }
@@ -42,7 +42,7 @@ function SourceButton({company,facts}:{company:Company;facts:Fact[]}) {
   return <SourceMarker company={company} facts={facts} name={label(facts[0]?.metric)||label(facts[0]?.field)||title(company.legal_name)}/>;
 }
 const integer = (value: unknown) => number(value) === null ? '' : new Intl.NumberFormat('en-GB', {maximumFractionDigits:0}).format(number(value)!);
-function Display({ value }: { value: unknown }) { return text(value) && text(value) !== 'Not found' ? <>{text(value)}</> : <Missing />; }
+function Display({ value }: { value: unknown }) { return text(value) && text(value) !== 'Not found' ? <>{displayValue(value)}</> : <Missing />; }
 function Unchecked({ company, category }: { company: Company; category: string }) {
   const { language, facts } = useLensData();
   if (hasSectionFacts(company, facts, category)) return null;
@@ -59,7 +59,7 @@ function FactRow({ company, name, value, facts = [] }: { company: Company; name:
   const stamp = facts[0] ? factDate(facts[0], language === 'no') : '';
   return <div className="data-row"><dt>{t(name)}</dt><dd className="min-w-0 break-words"><span className="profile-fact-row-value">{value}{stamp && <small className="muted profile-fact-date">{stamp}</small>}</span><SourceMarker company={company} facts={facts} name={t(name)} /></dd></div>;
 }
-function Field({ company, facts, field, name, category, format = text }: { company: Company; facts: Fact[]; field: string; name: string; category: string; format?: (v: unknown) => string }) {
+function Field({ company, facts, field, name, category, format = displayValue }: { company: Company; facts: Fact[]; field: string; name: string; category: string; format?: (v: unknown) => string }) {
   const { language } = useLensData();
   const industry = field === 'industry_text' && language === 'en';
   if (!found(company, category) || !text(company[field])) return <FactRow company={company} name={name} value={<span className="missing">{missingCheck(company, category, language === 'no')}</span>} />;
@@ -102,17 +102,17 @@ function Financials({ company: c, facts }: { company: Company; facts: Fact[] }) 
         const id = `${year}-${metric}`;
         const description = `${year} · ${t(metric === 'revenue' ? 'Revenue' : 'Annual result')}: ${money(value, undefined, c.currency)}`;
         return <button type="button" key={metric} className={`profile-chart-bar profile-chart-${metric}${value<0?' profile-chart-negative':''}`} style={{top:`${value >= 0 ? (high-value)/span*100 : zero}%`,height:value===0?'0px':`max(4px, ${Math.abs(value)/span*100}%)`,minHeight:0}} title={description} aria-label={description} aria-pressed={activeBar===id} onClick={()=>setActiveBar(id)} onFocus={()=>setActiveBar(id)}><span className="profile-chart-tooltip">{description}</span></button>;
-      })}</div><span className="profile-chart-year-label">{year}</span></div>)}</div> : <span className="missing">{missingCheck(c, 'financials', language === 'no')}</span>}
+      })}</div><span className="profile-chart-year-label">FY {year}</span></div>)}</div> : <span className="missing">{missingCheck(c, 'financials', language === 'no')}</span>}
     </figure>
       {activeBar && <p className="profile-chart-selection" role="status">{(() => { const [year,...parts] = activeBar.split('-'); const f = financialFact(c,facts,parts.join('-'),year); return f ? <>{year} · {t(text(f.metric)==='revenue'?'Revenue':'Annual result')}: {money(f.amount,undefined,c.currency)} <button type="button" className="source-button" onClick={()=>openSource(c,[f])}>{t('Source')}</button></> : null; })()}</p>}
-    {years.length ? <div className="profile-annual-table"><h3>{t('Annual financial figures')} · {text(c.currency)||'NOK'}</h3><table><thead><tr><th scope="col">{t('Year')}</th><th scope="col">{t('Metric')}</th><th scope="col">{t('Amount')}</th><th scope="col">{t('Source')}</th></tr></thead>{years.map(year=><tbody key={year}>{metrics.map(([metric,name],index)=>{const f=financialFact(c,facts,metric,year);return <tr key={metric} className={index===0?'profile-year-start':undefined}><th scope="row">{year}</th><td>{t(name)}</td><td>{f ? <Display value={money(f.amount,undefined,c.currency)}/> : <span className="missing">{missingCheck(c, 'financials', language === 'no')}</span>}</td><td>{f&&<SourceButton company={c} facts={[f]}/>}</td></tr>;})}</tbody>)}</table></div> : <p className="missing">{missingCheck(c, 'financials', language === 'no')}</p>}
+    {years.length ? <div className="profile-annual-table"><h3>{t('Annual financial figures')} · {text(c.currency)||'NOK'}</h3><table><thead><tr><th scope="col">{t('Year')}</th><th scope="col">{t('Metric')}</th><th scope="col">{t('Amount')}</th><th scope="col">{t('Source')}</th></tr></thead>{years.map(year=><tbody key={year}>{metrics.map(([metric,name],index)=>{const f=financialFact(c,facts,metric,year);return <tr key={metric} className={index===0?'profile-year-start':undefined}><th scope="row">FY {year}</th><td>{t(name)}</td><td>{f ? <Display value={money(f.amount,undefined,c.currency)}/> : <span className="missing">{missingCheck(c, 'financials', language === 'no')}</span>}</td><td>{f&&<SourceButton company={c} facts={[f]}/>}</td></tr>;})}</tbody>)}</table></div> : <p className="missing">{missingCheck(c, 'financials', language === 'no')}</p>}
   </>;
 }
 function People({ company: c, facts }: { company: Company; facts: Fact[] }) {
   if (!found(c, 'people')) return <Unchecked company={c} category="people" />;
   const people = companyFacts(c, facts, 'people');
   const included = new Set([...(text(c.ceo) ? evidence(c, facts, 'ceo') : []), ...(text(c.board_chair) ? evidence(c, facts, 'board_chair') : [])]);
-  return <dl><Field company={c} facts={facts} field="ceo" name="CEO" category="people" format={title} /><Field company={c} facts={facts} field="board_chair" name="Board Chair" category="people" format={title} />{people.filter(f => !included.has(f)).map((f, i) => <FactRow key={i} company={c} name={label(f.field) || 'Person'} value={<Display value={title(f.value)} />} facts={[f]} />)}</dl>;
+  return <dl><Field company={c} facts={facts} field="ceo" name="CEO" category="people" format={title} /><Field company={c} facts={facts} field="board_chair" name="Board Chair" category="people" format={title} />{people.filter(f => !included.has(f)).map((f, i) => <FactRow key={i} company={c} name={label(f.field) || 'Person'} value={<Display value={displayValue(f.value)} />} facts={[f]} />)}</dl>;
 }
 function WebSection({ company: c, facts, category }: { company: Company; facts: Fact[]; category: 'website' | 'social' }) {
   const {language,openSource}=useLensData();
@@ -126,7 +126,7 @@ function compactSectionState(c:Company,facts:Fact[],category:string,no:boolean) 
   const records=facts.filter(f=>f.org_number===c.org_number&&f.category===category);
   if(records.length){
     const retrieved=records.map(f=>text(f.retrieved_at)).filter(v=>v&&Number.isFinite(Date.parse(v))).sort((a,b)=>Date.parse(b)-Date.parse(a))[0];
-    return retrieved ? `✓ ${new Intl.DateTimeFormat(no?'nb-NO':'en-GB',{day:'numeric',month:'short',timeZone:'UTC'}).format(new Date(retrieved))}` : (no?'✓ Dokumentert':'✓ Sourced');
+    return retrieved ? `✓ ${date(retrieved)}` : (no?'✓ Dokumentert':'✓ Sourced');
   }
   const state=text(c.sections[category]);
   return state==='not_found' ? (no?'Ingen funnet':'None found') : state==='ambiguous' ? (no?'Holdt tilbake':'Withheld') : (no?'Kunne ikke sjekke':"Couldn't check");
@@ -140,6 +140,7 @@ function hasSectionFacts(c: Company, facts: Fact[], category: string) {
 }
 function sectionReason(c: Company, facts: Fact[], category: string, no: boolean) {
   const records = facts.filter(f => f.org_number === c.org_number && f.category === category);
+  if (category === 'jobs' && !['available','not_found'].includes(text(c.sections[category]))) return `Could not check (${text(c.sections[category]).replaceAll('_',' ') || 'no evidence available'})`;
   if (records.length && text(c.sections[category]) !== 'not_found') {
     const retrieved = records.map(f => text(f.retrieved_at)).filter(value => value && Number.isFinite(Date.parse(value))).sort((a,b) => Date.parse(b) - Date.parse(a))[0];
     return retrieved ? `${no ? 'Sjekket' : 'Checked'} ${date(retrieved)}` : (no ? 'Sjekkdato utilgjengelig' : 'Check date unavailable');
@@ -166,7 +167,7 @@ function Profile({ company: c, facts: initialFacts }: { company: Company; facts:
   const briefing=Array.isArray(c.briefing)?c.briefing as {text:string;claim_ids:string[]}[]:[];
   const detail=Array.isArray(c.supporting_detail)?c.supporting_detail as {text:string;claim_ids:string[]}[]:[];
   const briefingSources=Array.isArray(c.briefing_sources)?c.briefing_sources as Fact[]:[];
-  const citedSentence=(frame:{text:string;claim_ids:string[]},i:number)=><p key={i}>{frame.text}<SourceButton company={c} facts={briefingSources.filter(f=>frame.claim_ids.includes(text(f.claim_id)))}/></p>;
+  const citedSentence=(frame:{text:string;claim_ids:string[]},i:number)=><p key={i}>{displayValue(frame.text)}<SourceButton company={c} facts={briefingSources.filter(f=>frame.claim_ids.includes(text(f.claim_id)))}/></p>;
 
   const { t, openSource, language, selected, toggle } = useLensData();
   const no = language === 'no';
@@ -196,13 +197,10 @@ function Profile({ company: c, facts: initialFacts }: { company: Company; facts:
     return timestamp(b.reporting_period) - timestamp(a.reporting_period);
   });
   const summary = [
-    { field: 'municipality', name: 'Municipality', value: identity ? title(c.municipality) : '' },
-    { field: 'industry_text', name: 'Industry', value: identity ? (no ? text(c.industry_text) : text(c.industry_text_en) || text(c.industry_text)) : '' },
-    { field: 'employees', name: 'Employees', value: identity ? integer(c.employees) : '' },
-    { field: 'ceo', name: 'CEO', value: found(c, 'people') ? title(c.ceo) : '' },
-    { field: 'founded', name: 'Founded', value: identity && text(c.founded) ? date(c.founded) : '' },
-    { field: 'legal_form', name: 'Legal Form', value: identity ? text(c.legal_form) : '' },
-  ].map(part => ({ ...part, sources: evidence(c, facts, part.field) }));
+    {field:'latest_revenue',name:'Revenue',value:financial?compactMoney(c.latest_revenue,c.currency):''},
+    {field:'latest_profit',name:'Annual Result',value:financial?compactMoney(c.latest_profit,c.currency):''},
+    {field:'employees',name:'Employees',value:identity?integer(c.employees):''},
+  ].map(part => ({...part,sources:evidence(c,facts,part.field)}));
   const sectionIds: Record<string, string> = { identity: 'key-facts', financials: 'financials', people: 'people', locations: 'locations', website: 'website', social: 'social', jobs: 'jobs', news: 'news' };
   const history = Array.isArray(c.history) ? c.history.filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === 'object' && !Array.isArray(entry)).filter(entry => text(entry.date) && text(entry.field) && (text(entry.old_value) || text(entry.new_value))) : [];
   const heroSummary=[identity&&text(c.municipality)?`${title(c.municipality)}${local('-based company','-basert selskap')}`:'',identity?(no?text(c.industry_text):text(c.industry_text_en)||text(c.industry_text)):'',found(c,'people')&&text(c.ceo)?`CEO ${title(c.ceo)}`:'',financial&&number(c.latest_revenue)!==null?`${local('Revenue','Omsetning')} ${money(c.latest_revenue,undefined,c.currency)}${evidence(c,facts,'latest_revenue')[0] ? ` (${factDate(evidence(c,facts,'latest_revenue')[0],no)})` : ''}`:''].filter(Boolean).join(' · ');
@@ -211,14 +209,14 @@ function Profile({ company: c, facts: initialFacts }: { company: Company; facts:
       <div className="profile-title-row"><h1 className="break-words">{sourced(title(c.legal_name) || <Missing />, identity ? companyFacts(c, facts, 'identity').filter(f => /^(legal name|registered legal name|company name|name)$/i.test(text(f.field))) : [], t('Registered Legal Name'))}</h1></div>
       <div className="profile-identity-row">
         <span className="profile-identity-pill">{sourced(`Org. ${c.org_number}`,identitySources('org_number'),t('Organisation Number'))}</span>
-        {identity && text(c.legal_form) && <span className="profile-identity-pill">{sourced(text(c.legal_form),identitySources('legal_form'),t('Legal Form'))}</span>}
+        {identity && displayValue(c.legal_form) && <span className="profile-identity-pill">{sourced(displayValue(c.legal_form),identitySources('legal_form'),t('Legal Form'))}</span>}
         {text(c.status)&&!['not found','unknown','unavailable','not_available','n/a','null','undefined'].includes(text(c.status).toLowerCase())&&<span className="profile-identity-pill">{t('Status')}: {sourced(text(c.status),identitySources('status'),t('Status'))}</span>}
-        {workplaceCount !== null && <span className="profile-identity-pill">{local('Registered workplaces','Registrerte arbeidssteder')}: {sourced(<>{integer(workplaceCount)}{workplaceFacts[0]&&<small className="muted">{factDate(workplaceFacts[0],no)}</small>}</>,workplaceFacts,local('Registered workplaces','Registrerte arbeidssteder'))}</span>}
-        {website && <span className="profile-identity-pill"><a href={website} target="_blank" rel="noopener noreferrer" aria-label={local('Visit website','Besøk nettsted')}>{t('Website')} <ArrowIcon direction="external"/></a></span>}
+        {workplaceCount !== null && <span className="profile-identity-pill" title={workplaceFacts[0]?factDate(workplaceFacts[0],no):''}>{sourced(`${integer(workplaceCount)} registered workplace${workplaceCount===1?'':'s'}`,workplaceFacts,'Registered workplaces')}</span>}
+
       </div>
       {!briefing.length&&heroSummary&&<p className="profile-hero-summary">{heroSummary}</p>}
       <div className="profile-website-actions">
-        {website && <a className="button secondary" href={website} target="_blank" rel="noopener noreferrer">{local('Visit website','Besøk nettsted')}</a>}
+        {website && <a className="button secondary" href={website} target="_blank" rel="noopener noreferrer">{local('Visit website','Besøk nettsted')} <ArrowIcon direction="external"/></a>}{website&&<SourceMarker company={c} facts={evidence(c,facts,'website')} name="Website"/>}
         {companyFacts(c,facts,'social').filter(f=>socialUrl(f)).map((f,i)=><span key={i}><a href={socialUrl(f)} target="_blank" rel="noopener noreferrer" aria-label={`${local('Visit','Besøk')} ${text(f.field)||t('Social')}`}>{text(f.field)||t('Social')} <ArrowIcon direction="external"/></a><SourceMarker company={c} facts={[f]} name={text(f.field)||t('Social')}/></span>)}
       </div>
     </header>
@@ -237,24 +235,29 @@ function Profile({ company: c, facts: initialFacts }: { company: Company; facts:
       <div className="profile-sidebar-actions"><button type="button" className={`button ${selected.includes(c.org_number)?'selected':'secondary'}`} aria-pressed={selected.includes(c.org_number)} disabled={!selected.includes(c.org_number)&&selected.length>=3} onClick={()=>toggle(c.org_number)}>{selected.includes(c.org_number)?local('✓ Added','✓ Lagt til'):selected.length>=3?local('Limit reached','Grensen er nådd'):local('+ Compare','+ Sammenlign')}</button><CopyLink url={`/company?org=${c.org_number}`}/>{evidence(c,facts,'website').length>0&&<button type="button" className="button secondary" onClick={()=>openSource(c,evidence(c,facts,'website'))}>{local('Website evidence','Dokumentasjon for nettsted')}</button>}</div>
     </aside><div className="profile-main-column">
       {briefing.length>0&&<Section title="Company briefing" id="briefing">{briefing.map(citedSentence)}{detail.length>0&&<details><summary>Supporting detail</summary>{detail.map(citedSentence)}</details>}</Section>}
-      {facts.some(f=>f.group==='GLEIF')&&<Section title="Ownership & identifiers (GLEIF)" id="ownership"><dl>{facts.filter(f=>f.group==='GLEIF').map((f,i)=><FactRow key={i} company={c} name={text(f.field)} value={text(f.value)} facts={[f]}/>)}</dl></Section>}
+      {facts.some(f=>f.group==='GLEIF')&&<Section title="Ownership & identifiers (GLEIF)" id="ownership"><dl>{facts.filter(f=>f.group==='GLEIF').map((f,i)=><FactRow key={i} company={c} name={text(f.field)} value={displayValue(f.value)} facts={[f]}/>)}</dl></Section>}
 
       <Section title={local('Overview','Oversikt')} id="overview"><dl className="profile-top-facts profile-summary-grid">{summary.map(part=><div key={part.field} className={`profile-overview-${part.field}`}><dt className="small-label"><FactIcon field={part.field}/>{t(part.name)}</dt><dd>{sourced(part.field==='employees'&&part.value?<span className="profile-overview-number"><CountUp value={number(c.employees)!} formatted={part.value} format={integer}/></span>:part.field==='industry_text'?<span className="profile-industry-value" title={part.value}>{part.value||<span className="missing">{missingCheck(c, 'identity', no)}</span>}</span>:part.value||<span className="missing">{missingCheck(c, part.field==='ceo'?'people':'identity', no)}</span>,part.sources,t(part.name))}{part.value&&part.sources[0]&&<small className="muted">{factDate(part.sources[0],no)}</small>}{part.field==='industry_text'&&!no&&text(c.industry_text_en)&&text(c.industry_text)&&<small className="muted" lang="nb">{text(c.industry_text)}</small>}</dd></div>)}</dl></Section>
       <Section title={local('Key facts','Nøkkelopplysninger')} id="key-facts"><Checked company={c} facts={facts} category="identity" />{identity ? <dl><FactRow company={c} name="Organisation Number" value={c.org_number} facts={evidence(c, facts, 'org_number')} /><Field company={c} facts={facts} field="legal_form" name="Legal Form" category="identity" /><Field company={c} facts={facts} field="municipality" name="Municipality" category="identity" format={title} /><Field company={c} facts={facts} field="industry_text" name="Industry" category="identity" /><Field company={c} facts={facts} field="industry_code" name="Industry Code" category="identity" /><Field company={c} facts={facts} field="founded" name="Founded" category="identity" format={v => text(v) ? date(v) : ''} /><Field company={c} facts={facts} field="employees" name="Employees" category="identity" format={integer} /></dl> : <Unchecked company={c} category="identity" />}</Section>
       <Section title={t('People')} id="people"><Checked company={c} facts={facts} category="people" /><People company={c} facts={facts} /></Section>
       <Section title={t('Financials')} id="financials"><Checked company={c} facts={facts} category="financials" /><Financials company={c} facts={facts} /></Section>
       <Section title={t('Locations')} id="locations"><Checked company={c} facts={facts} category="locations" />{places.length || hasSectionFacts(c,facts,'locations') ? <><p className="muted text-sm">{t('Number of Locations')}: {integer(places.length)}</p>{places.length ? <ul className="list-none p-0 m-0">{places.map((place, i) => <li className="data-row" key={i}><span className="break-words min-w-0">{place.value}<small className="muted" style={{display:'block'}}>{place.roles.map(role => role === 'Business address' ? local('Business address','Forretningsadresse') : local('Registered workplace','Registrert arbeidssted')).join(' / ')}</small></span><SourceButton company={c} facts={place.facts.length ? place.facts : evidence(c, facts, 'address')} /></li>)}</ul> : <span className="missing">{missingCheck(c, 'locations', no)}</span>}</> : <Unchecked company={c} category="locations" />}</Section>
-      <Section title={t('Website & Social')} id="website-social"><div id="website" className="profile-section-anchor"><h3>{t('Website')}</h3><Checked company={c} facts={facts} category="website" /><WebSection company={c} facts={facts} category="website" /></div><div id="social" className="profile-section-anchor"><h3 className="mt-6">{t('Social')}</h3><Checked company={c} facts={facts} category="social" /><WebSection company={c} facts={facts} category="social" /></div></Section>
-      <Section title={t('Jobs')} id="jobs"><Checked company={c} facts={facts} category="jobs" />{found(c, 'jobs') ? <>{ads.length ? <><p className="muted text-sm">{t('Number of Job Ads')}: {integer(ads.length)}</p><ul className="list-none m-0 p-0">{ads.map((f, i) => { const [occupation, ...place] = text(f.value).split('·'); return <li key={i} className="border-b border-[#dde5e0] py-4 last:border-0"><h3 className="mb-2">{occupation.trim() || <Missing />}</h3><p className="muted text-sm mb-1">{t('Place')}: <Display value={title(place.join('·').trim())} /></p><p className="muted text-sm mb-0">{factDate(f,no)}</p><SourceButton company={c} facts={[f]} /></li>; })}</ul></> : <span className="missing">{missingCheck(c, 'jobs', no)}</span>}</> : <Unchecked company={c} category="jobs" />}</Section>
+      <Section title={t('Website & Social')} id="website-social"><div id="website" className="profile-section-anchor"><h3>{t('Website')}</h3><Checked company={c} facts={facts} category="website" /><WebSection company={c} facts={facts} category="website" /></div><div id="social" className="profile-section-anchor"><h3 className="mt-6">{t('Social')}</h3><WebSection company={c} facts={facts} category="social" /></div></Section>
+      <Section title={t('Jobs')} id="jobs">{found(c, 'jobs') ? <>{ads.length ? <><p className="muted text-sm">{t('Number of Job Ads')}: {integer(ads.length)}</p><ul className="list-none m-0 p-0">{ads.map((f, i) => { const [occupation, ...place] = text(f.value).split('·'); return <li key={i} className="border-b border-[#dde5e0] py-4 last:border-0"><h3 className="mb-2">{occupation.trim() || <Missing />}</h3><p className="muted text-sm mb-1">{t('Place')}: <Display value={title(place.join('·').trim())} /></p><p className="muted text-sm mb-0">{factDate(f,no)}</p><SourceButton company={c} facts={[f]} /></li>; })}</ul></> : <span className="missing">{missingCheck(c, 'jobs', no)}</span>}</> : <Unchecked company={c} category="jobs" />}</Section>
       <Section title="Activity" id="news"><Checked company={c} facts={facts} category="news" />{[
         ['Company-published news',news.filter(f=>!['Registry announcement','Public procurement award'].includes(text(f.kind)))],
         ['Public procurement awards',news.filter(f=>f.kind==='Public procurement award')],
         ['Registry announcements',news.filter(f=>f.kind==='Registry announcement')],
-      ].map(([heading,items])=>{const entries=items as Fact[];return entries.length>0?<div key={heading as string}><h3>{heading as string}</h3><ul className="list-none m-0 p-0">{entries.map((f,i)=><li key={i} className="border-b border-[#dde5e0] py-4 last:border-0"><p className="muted text-xs mb-2">{text(f.kind)||'Company-published news'} | {factDate(f,no)}</p><h4 className="mb-0 break-words">{text(f.value)}</h4><SourceButton company={c} facts={[f]}/></li>)}</ul></div>:null;})}
+      ].map(([heading,items])=>{const entries=items as Fact[];return entries.length>0?<div key={heading as string}><h3>{heading as string}</h3>{heading==='Registry announcements'&&<p className="muted text-xs">Dates are registry publication dates, not effective dates</p>}{(()=>{
+        const registry=heading==='Registry announcements';
+        const minor=(f:Fact)=>registry&&/employee.information|latest.*accounts|unspecified|registry update recorded/i.test(text(f.value));
+        const render=(items:Fact[]) => <ul className="list-none m-0 p-0">{items.map((f,i)=><li key={i} className="border-b border-[#dde5e0] py-4 last:border-0"><p className="muted text-xs mb-2">{registry?'Registry update':text(f.kind)||'Company-published news'} · {factDate(f,no)}</p><h4 className="mb-0 break-words">{displayValue(f.value).replace(/^Registry announcement:\s*/i,'').replace(/\s*\([^)]*registry publication date, not effective date[^)]*\)/gi,'').replace(/workplace(?: registry update recorded:)?\s+(\d{9})/i,'Workplace $1 updated')}</h4><SourceButton company={c} facts={[f]}/></li>)}</ul>;
+        const small=entries.filter(minor);return <>{render(entries.filter(f=>!minor(f)))}{small.length>0&&<details><summary>Minor registry updates ({small.length})</summary>{render(small)}</details>}</>;
+      })()}</div>:null;})}
       {moreUrls.length>0&&moreState!=='loaded'&&<button type="button" className="button secondary" disabled={moreState==='loading'} onClick={loadMore}>{moreState==='loading'?'Loading more...':moreState==='error'?'Retry show more':`Show more (${number(c.more_facts_count)??''})`}</button>}
       {moreState==='loaded'&&<p className="muted">All additional records loaded.</p>}
       {!news.length&&<Unchecked company={c} category="news"/>}</Section>
-      {history.length > 0 && <Section title={t('What changed')} id="history"><ol className="change-timeline">{history.map((entry, i) => <li key={i}><time dateTime={text(entry.date)}>{date(entry.date)}</time><p>{label(entry.field)}: {text(entry.old_value) || t('Not found')} <ArrowIcon/> {text(entry.new_value) || t('Not found')}</p>{safeUrl(entry.source_url) && <a href={safeUrl(entry.source_url)} target="_blank" rel="noopener noreferrer">{t('Source')} <ArrowIcon direction="external"/></a>}</li>)}</ol></Section>}
+      {history.length > 0 && <Section title={t('What changed')} id="history"><ol className="change-timeline">{history.map((entry, i) => <li key={i}><time dateTime={text(entry.date)}>{date(entry.date)}</time><p>{label(entry.field)}: {displayValue(entry.old_value) || t('Not found')} <ArrowIcon/> {displayValue(entry.new_value) || t('Not found')}</p>{safeUrl(entry.source_url) && <a href={safeUrl(entry.source_url)} target="_blank" rel="noopener noreferrer">{t('Source')} <ArrowIcon direction="external"/></a>}</li>)}</ol></Section>}
       <Section title={local("What we couldn't find", 'Det vi ikke fant')} id="recorded-gaps"><p className="muted">{local('Missing information is part of the record, not proof of absence. These are the gaps recorded by the dataset.', 'Manglende informasjon er en del av dokumentasjonen, ikke bevis på fravær. Dette er manglene registrert i datasettet.')}</p><ul>{categories.filter(category=>!hasSectionFacts(c,facts,category)).map(category=><li key={category}><strong>{t(sectionNames[category])}</strong><p className="muted">{sectionReason(c,facts,category,no)}</p></li>)}</ul>{categories.every(category=>hasSectionFacts(c,facts,category))&&<p className="muted">{local('All sections have sourced records.','Alle avsnitt har kildebelagte opplysninger.')}</p>}</Section>
       <div className="profile-exports"><ExportActions companies={[c]} facts={facts}/></div>
     </div></div>

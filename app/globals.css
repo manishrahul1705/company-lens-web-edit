@@ -197,3 +197,9 @@ html,body{overflow-x:clip;max-width:100%}
     @apply bg-background text-foreground;
   }
 }
+/* Closed dialogs must never participate in layout. */
+dialog:not([open]){display:none!important}
+.search-dialog[open]{height:min(720px,85dvh);overflow:hidden;background:var(--card);color:var(--foreground)}
+.search-dialog .dialog-body{height:100%;overflow-y:auto}
+
+@media(max-width:1023px){.site-header{position:sticky;top:0;z-index:50;background:var(--background)}}

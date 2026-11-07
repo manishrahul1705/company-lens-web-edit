@@ -3,6 +3,23 @@ export type Fact = Record<string, unknown> & { org_number: string; category: str
 export const categories = ['identity','financials','people','locations','website','social','jobs','news'] as const;
 export type Category = typeof categories[number];
 export const text = (v: unknown): string => typeof v === 'string' ? v.trim() : typeof v === 'number' && Number.isFinite(v) ? String(v) : '';
+// Display values are untrusted: decode structured legal forms without exposing JSON.
+export function displayValue(v: unknown): string {
+  if (typeof v === 'string') {
+    const value = v.trim();
+    if (/^[{[]/.test(value)) { try { return displayValue(JSON.parse(value)); } catch { return ''; } }
+    if (/[{]\s*"|"(?:op|path|value|id)"\s*:/.test(value)) return '';
+    return value.replace(/\b\d{4}-\d{2}-\d{2}(?:T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?)?/g, value => date(value));
+  }
+  if (Array.isArray(v)) return v.map(displayValue).filter(Boolean).join(' · ');
+  if (v && typeof v === 'object') {
+    const item = v as Record<string, unknown>;
+    const code = text(item.id) || text(item.code);
+    const name = text(item.name) || text(item.label) || (code === 'YI42' ? 'Aksjeselskap' : '');
+    return [code, name].filter(Boolean).join(' – ');
+  }
+  return text(v);
+}
 export const number = (v: unknown): number | null => typeof v === 'number' && Number.isFinite(v) ? v : null;
 export function title(v: unknown) {
   let index = 0;
@@ -16,11 +33,21 @@ export function title(v: unknown) {
 }
 export function address(v: unknown) { return text(v).replace(/\b[\p{Lu}][\p{Lu}\s-]+$/u, x => title(x)); }
 export function safeUrl(v: unknown) { try { const u = new URL(text(v)); return ['https:','http:'].includes(u.protocol) ? u.href : ''; } catch { return ''; } }
-export function factDate(f: Fact | undefined, no = false) { if (!f) return ''; const period = text(f.reporting_period) || text(f.year); return period || (text(f.retrieved_at) ? `${no ? 'Sjekket' : 'Checked'} ${date(f.retrieved_at)}` : ''); }
+export function factDate(f: Fact | undefined, no = false) {
+  if (!f) return '';
+  const period = text(f.reporting_period) || text(f.year);
+  const years = period.match(/\b(?:19|20)\d{2}\b/g);
+  if (f.category === 'financials' && years?.length) return `FY ${years.at(-1)}`;
+  return period ? displayValue(period) : text(f.retrieved_at) ? `${no ? 'Sjekket' : 'Checked'} ${date(f.retrieved_at)}` : '';
+}
 // Missing-data checks must use the supplied category check, never a retrieval or financial date.
 export function missingCheck(c: Company, category: string, no = false): string {
   const checks = c.checked_at;
   const checked = checks && typeof checks === 'object' && !Array.isArray(checks) ? text((checks as Record<string, unknown>)[category]) : '';
+  if (category === 'social' && !checked && checks && typeof checks === 'object') {
+    const websiteCheck = text((checks as Record<string, unknown>).website);
+    if (safeUrl(c.website) && websiteCheck && Number.isFinite(Date.parse(websiteCheck))) return `Checked ${date(websiteCheck)} – none found on the verified website`;
+  }
   if (!checked || !Number.isFinite(Date.parse(checked))) return no ? 'Sjekkdato utilgjengelig' : 'Check date unavailable';
   return `${no ? 'Sjekket' : 'Checked'} ${date(checked)} – ${no ? 'ingenting funnet' : 'nothing found'}`;
 }
