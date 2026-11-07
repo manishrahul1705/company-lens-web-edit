@@ -2,7 +2,7 @@
 import {createContext,useContext,useEffect,useState,useCallback,useRef, type ReactNode} from 'react';
 import {readAsset,prefetchFacts as warmFacts} from '@/lib/data-client';
 import {expandIndex,type CompactIndex} from '@/lib/directory-index';
-export type DatasetMetadata={version:string;companies:number;facts:number;websites:number;gaps:number;checked:string;evidenceCounts:Record<string,number>};
+export type DatasetMetadata={version:string;companies:number;facts:number;verifiedClaims?:number;websites:number;gaps:number;checked:string;evidenceCounts:Record<string,number>};
 import {Company,Fact,parseCompanies,parseFacts} from '@/lib/lens-data';
 import {labels} from '@/lib/lens-labels';
 import {usePathname,useSearchParams} from 'next/navigation';
